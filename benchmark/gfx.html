@@ -1,0 +1,10 @@
+<!doctype html><html><head><title>gfx</title></head><body style="margin:0;background:#111;overflow:hidden"><canvas id=c></canvas><script>
+const c=document.getElementById('c'),x=c.getContext('2d');c.width=innerWidth;c.height=innerHeight;
+const N=4000,P=[];for(let i=0;i<N;i++)P.push({x:Math.random()*c.width,y:Math.random()*c.height,vx:Math.random()*4-2,vy:Math.random()*4-2,r:2+Math.random()*4,h:Math.random()*360});
+let frames=0,running=false;
+window.startTest=()=>{frames=0;running=true;window.t0=performance.now()};
+window.stopTest=()=>{running=false;return {frames,secs:(performance.now()-window.t0)/1000}};
+function draw(){x.fillStyle='rgba(17,17,17,0.3)';x.fillRect(0,0,c.width,c.height);for(const p of P){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>c.width)p.vx*=-1;if(p.y<0||p.y>c.height)p.vy*=-1;x.beginPath();x.fillStyle=`hsl(${p.h},80%,60%)`;x.arc(p.x,p.y,p.r,0,6.283);x.fill();}if(running)frames++;requestAnimationFrame(draw)}
+requestAnimationFrame(draw);
+window.gpu=(()=>{try{const g=document.createElement('canvas').getContext('webgl');const e=g.getExtension('WEBGL_debug_renderer_info');return g.getParameter(e.UNMASKED_RENDERER_WEBGL)}catch(e){return 'n/a'}})();
+</script></body></html>

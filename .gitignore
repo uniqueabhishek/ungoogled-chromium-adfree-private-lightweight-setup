@@ -1,0 +1,6 @@
+node_modules/
+*.log
+benchmark/results*.json
+benchmark/out/
+.claude/worktrees/
+.playwright-mcp/
