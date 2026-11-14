@@ -312,36 +312,35 @@ Skip this section on a PC that never had Chrome.
 
 ### 8.1 What comes across and what doesn't
 
-| Comes across (by copying the profile folders) | Does not come across |
+| Comes across | Does not come across |
 |---|---|
 | Bookmarks and their icons | Website logins (sign in once per site; Chrome locks its cookies) |
 | Full history and typed-address suggestions | Saved passwords → use Bitwarden, [section 9](#9-passwords-with-bitwarden) |
-| Settings, site permissions, saved addresses | Saved payment cards |
-| New tab shortcuts | Google account sign-in and sync |
-| Open tabs | Extensions (Chromium switches them off; reinstall them, [section 10](#10-extensions-to-reinstall)) |
-| Profile names | Google profile photo ([section 11](#11-what-does-not-work-and-why)) |
+| New tab shortcuts | Chrome settings and site permissions (each profile starts with this setup's settings instead) |
+| Open tabs | Saved addresses and payment cards |
+| Profile names and avatars | Extensions (reinstall them, [section 10](#10-extensions-to-reinstall)) |
+| | Google account sign-in, sync, and the Google profile photo ([section 11](#11-what-does-not-work-and-why)) |
 
 ### 8.2 Import every Chrome profile in one go
 
-**Script:** `extras\Import-Chrome-Profiles.ps1`
-
-1. **Close both Google Chrome and Ungoogled Chromium.**
-2. Run, from the folder where you downloaded this repo:
+1. **Run the install command first** ([section 1](#1-quick-start-the-short-way)).
+2. **Close both Google Chrome and Ungoogled Chromium**, including their icons near the clock.
+3. Paste this into PowerShell:
    ```powershell
-   pwsh -ExecutionPolicy Bypass -File ".\extras\Import-Chrome-Profiles.ps1"
+   irm https://raw.githubusercontent.com/uniqueabhishek/ungoogled-chromium-adfree-private-lightweight-setup/main/import-chrome.ps1 | iex
    ```
-3. Then run `extras\Set-Search-Engine.ps1` so the imported profiles get Google too ([section 6](#6-search-in-the-address-bar)).
 
 **What it does:**
 
-- **Copies every Chrome profile folder** (`Default`, `Profile 1`, `Profile 2`, …), skipping the caches. The browser rebuilds those. It reads the folders themselves, not Chrome's own profile list: that list can miss profiles.
-- **Names each profile after its Google address** (for example `abc@gmail.com`) instead of "Person 1", so the right one is easy to pick. Profiles with no Google address get their folder name added.
-- **Keeps the avatar** Chrome used.
-- **Opens a profile picker** at start-up, listing every profile.
-- **Never deletes anything.** Chrome is not touched. Anything already in Ungoogled Chromium is renamed `*.before-import-<date>`.
+- **Finds every Chrome profile folder** (`Default`, `Profile 1`, `Profile 2`, …). It reads the folders themselves, not only Chrome's own profile list, which can miss profiles.
+- **Makes a matching Ungoogled Chromium profile with Google search.** Google can only be set on a brand-new profile at the browser's first start, so for each missing profile the script starts the browser once, hidden, and moves the new profile into place. A profile that already exists (for example the one you set up with the install) keeps its settings and extensions, and Chrome's data is added to it.
+- **Copies the data**, skipping caches, extension folders and the files Chrome locks to itself (passwords, cookies).
+- **Names each profile after its Google address** (for example `abc@gmail.com`), or its Chrome name, and keeps the avatar.
+- **Opens a profile picker** at start-up when there is more than one profile.
+- **Never deletes anything.** Chrome is not touched. Anything it replaces in Ungoogled Chromium is moved to `User Data\Backup before import <date>`.
+- **Extensions are per profile.** In each profile that was new, add uBlock Origin Lite once with the link the script prints at the end. Load Chromium Web Store there too if you want "Add to Chromium" in that profile ([section 5](#5-installing-extensions-from-the-chrome-web-store)).
 
-**It takes a few minutes** for large profiles.
-
+**It takes a few minutes** for large profiles. A log is saved to `%TEMP%\ungoogled-chromium-import-log.txt`.
 ### 8.3 Bookmarks only (lighter alternative)
 
 If you only want bookmarks, not whole profiles:
@@ -455,7 +454,7 @@ Open `chrome://extensions` in **Google Chrome** to see your list, then in Ungoog
 | `uninstall.ps1` | Undoes `install.ps1`; keeps profiles and the browser |
 | `docs/GUIDE.md` | This guide |
 | `extras/Set-Search-Engine.ps1` (+ `set_search_engine.py`, `make-google-default.mjs`) | Google with suggestions as the default, plus yt / gh / maps shortcuts, in every **existing** profile |
-| `extras/Import-Chrome-Profiles.ps1` | Copies every Chrome profile into Ungoogled Chromium, named by Google address |
+| `import-chrome.ps1` | Copies every Chrome profile into Ungoogled Chromium, with Google search, named by Google address |
 | `extras/Edit-Shortcuts.ps1` | Lists / adds / removes new tab page shortcuts per profile |
 | `benchmark/` | Chrome vs Ungoogled test: `REPORT.md` (results) and `bench.mjs` (re-run with `node bench.mjs` after `pnpm install`) |
 

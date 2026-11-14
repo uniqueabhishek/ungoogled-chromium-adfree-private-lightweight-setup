@@ -94,6 +94,19 @@ The script opens the browser with two tabs. Browsers do not allow these three st
 
 ---
 
+## Moving from Google Chrome? One more command
+
+After the install, close **both** browsers and paste this into PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/uniqueabhishek/ungoogled-chromium-adfree-private-lightweight-setup/main/import-chrome.ps1 | iex
+```
+
+- **Brings across every Chrome profile:** bookmarks, history, address-bar suggestions, open tabs, new tab shortcuts and the profile name. Each profile gets Google search.
+- **Does not bring:** passwords (Chrome locks them; export them from passwords.google.com into a password manager such as Bitwarden, see [the guide](docs/GUIDE.md#9-passwords-with-bitwarden)), website logins (sign in once per site), or extensions (add them again from the Chrome Web Store).
+- **Safe:** Chrome is never changed, and anything replaced in Ungoogled Chromium is kept in `User Data\Backup before import <date>`.
+- **Extensions are per profile:** in each extra profile, add uBlock Origin Lite once with the link the script prints at the end.
+
 ## Already using Ungoogled Chromium?
 
 Running the script is safe: it backs up every browser file it changes as `<file>.before-setup-<date>`. It sets everything except the search engine of **existing** profiles (the Google default applies to profiles created from now on). To switch existing profiles too, use [extras/Set-Search-Engine.ps1](extras/Set-Search-Engine.ps1) — it needs PowerShell 7, [uv](https://docs.astral.sh/uv/) and [Node.js](https://nodejs.org/).
@@ -104,7 +117,6 @@ In [extras/](extras/), all for PowerShell 7 (`pwsh`):
 
 | Script | What it does |
 |---|---|
-| `Import-Chrome-Profiles.ps1` | Copies every Google Chrome profile (bookmarks, history, settings, open tabs) into Ungoogled Chromium, each named after its Google address |
 | `Set-Search-Engine.ps1` | Google as the default in **every existing** profile, plus the shortcuts `yt cats`, `gh react`, `maps london` |
 | `Edit-Shortcuts.ps1` | Adds or removes new tab page shortcut tiles (the "Add shortcut" button is hidden in Ungoogled Chromium) |
 
