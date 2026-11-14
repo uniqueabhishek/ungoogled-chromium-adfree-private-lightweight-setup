@@ -54,10 +54,18 @@ if (-not (Test-Path $initialPrefs)) {
     if (-not (Test-Path $initialPrefs)) { Warn 'Run the install command first (see the README), then run this again.'; return }
 }
 if (-not (Test-Path -LiteralPath $chromeData)) { Warn "No Google Chrome profiles found in $chromeData."; return }
-if ((-not $env:UCS_EXE -and ((Get-Running 'Google\Chrome') -or (Get-Running 'Chromium'))) -or (Get-OurBrowser)) {
-    Warn 'Close Google Chrome AND Ungoogled Chromium first (every window, and their icons near the clock),'
-    Warn 'then run this again.'
-    return
+$anyOpen = { (-not $env:UCS_EXE -and ((Get-Running 'Google\Chrome') -or (Get-Running 'Chromium'))) -or (Get-OurBrowser) }
+if (& $anyOpen) {
+    $yn = if ([Environment]::UserInteractive) { Read-Host '   Google Chrome and/or Ungoogled Chromium is open. Close them now? Save anything you are working on first. (Y/N)' } else { 'n' }
+    if ($yn -notmatch '^\s*y') { Warn 'Close Google Chrome AND Ungoogled Chromium (and their icons near the clock), then run this again.'; return }
+    $open = { @(Get-Running 'Google\Chrome') + @(Get-Running 'Chromium') + @(Get-OurBrowser) | Where-Object { $_ } }
+    & $open | ForEach-Object { try { [void]$_.CloseMainWindow() } catch { } }
+    for ($i = 0; $i -lt 20 -and (& $anyOpen); $i++) { Start-Sleep -Milliseconds 250 }
+    & $open | Stop-Process -Force -ErrorAction SilentlyContinue
+    for ($i = 0; $i -lt 20 -and (& $anyOpen); $i++) { Start-Sleep -Milliseconds 250 }
+    Start-Sleep -Seconds 1
+    if (& $anyOpen) { Warn 'Could not close the browsers. Close them yourself, then run this again.'; return }
+    Note 'Closed the browsers.'
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -139,11 +147,11 @@ Step '3. Copying bookmarks, history, open tabs and shortcuts'
 $skipDirs  = 'Cache', 'Code Cache', 'GPUCache', 'DawnCache', 'DawnGraphiteCache', 'DawnWebGPUCache', 'GrShaderCache',
              'ShaderCache', 'CacheStorage', 'ScriptCache', 'Service Worker', 'Network', 'Extensions',
              'Local Extension Settings', 'Sync Extension Settings', 'Managed Extension Settings', 'Extension Rules',
-             'Extension Scripts', 'Extension State', 'Storage', 'blob_storage', 'Safe Browsing Network', 'optimization_guide_hint_cache_store',
+             'Extension Scripts', 'Extension State', 'DNR Extension Rules', 'Storage', 'blob_storage', 'Safe Browsing Network', 'optimization_guide_hint_cache_store',
              'optimization_guide_model_store', 'Download Service', 'GCM Store', 'Sync Data', 'Feature Engagement Tracker'
 $skipFiles = 'Preferences', 'Secure Preferences', 'Web Data', 'Web Data-journal', 'Login Data', 'Login Data-journal',
              'Login Data For Account', 'Login Data For Account-journal', 'Cookies', 'Cookies-journal', 'LOCK', 'lockfile',
-             'Account Web Data', 'Account Web Data-journal', 'trusted_vault.pb', 'Google Profile Picture.png'
+             'Account Web Data', 'Account Web Data-journal', 'Extension Cookies', 'Extension Cookies-journal', 'trusted_vault.pb', 'Google Profile Picture.png'
 foreach ($p in $plan) {
     $target = Join-Path $userData $p.Folder
     # Move aside anything that would be overwritten.
@@ -227,8 +235,10 @@ if (-not $chromeExe -or -not $canAsk) {
             if ($yn -notmatch '^\s*y') { continue }
             $since = (Get-Date).AddSeconds(-5)
             Start-Process $chromeExe -ArgumentList "--profile-directory=`"$($p.Folder)`"", 'chrome://password-manager/settings'
-            Write-Host '   In GOOGLE CHROME: click "Export passwords", enter your Windows PIN if asked, and click Save.' -ForegroundColor Green
-            Write-Host '   (No passwords listed there? Open passwords.google.com > gear icon > Export passwords instead.)'
+            Write-Host '   In GOOGLE CHROME (Password Manager > Settings): find "Export passwords" and click its' -ForegroundColor Green
+            Write-Host '   "Download file" button, enter your Windows PIN if asked, then click Save.' -ForegroundColor Green
+            Write-Host '   No "Export passwords" row? Your passwords are kept in your Google account instead: open'
+            Write-Host '   passwords.google.com in Chrome, sign in, click the gear icon > "Export passwords" > Export.'
             Write-Host '   Waiting for the file... (press Ctrl+C to stop)'
             $csv = $null
             for ($i = 0; $i -lt 600 -and -not $csv; $i++) {
@@ -242,7 +252,7 @@ if (-not $chromeExe -or -not $canAsk) {
             Note "Found it: $($csv.Name)"
             try { Set-Clipboard -Value $csv.FullName } catch { }
             Start-Process $exe -ArgumentList "--profile-directory=`"$($p.Folder)`"", 'chrome://password-manager/settings'
-            Write-Host '   In UNGOOGLED CHROMIUM: click "Import passwords" > "Select file", press Ctrl+V in the' -ForegroundColor Green
+            Write-Host '   In UNGOOGLED CHROMIUM: find "Import passwords", click "Select file", press Ctrl+V in the' -ForegroundColor Green
             Write-Host '   "File name" box (the path is copied for you), then Open.'
             Read-Host '   Press Enter here once it says the passwords were imported' | Out-Null
             # Overwrite, then delete (not to the Recycle Bin) - the file holds every password in plain text.

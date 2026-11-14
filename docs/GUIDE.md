@@ -324,7 +324,7 @@ Skip this section on a PC that never had Chrome.
 ### 8.2 Import every Chrome profile in one go
 
 1. **Run the install command first** ([section 1](#1-quick-start-the-short-way)).
-2. **Close both Google Chrome and Ungoogled Chromium**, including their icons near the clock.
+2. **Save your work in Chrome and Ungoogled Chromium.** The script offers to close both browsers for you.
 3. Paste this into PowerShell:
    ```powershell
    irm https://raw.githubusercontent.com/uniqueabhishek/ungoogled-chromium-adfree-private-lightweight-setup/main/import-chrome.ps1 | iex

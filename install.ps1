@@ -58,8 +58,15 @@ Write-Host '-------------------------------------------'
 
 # Chrome and Chromium are both chrome.exe, so only look at the one running from the Chromium folder.
 if (Get-Chromium) {
-    Warn 'Ungoogled Chromium is open. Close every window (and its icon near the clock), then run this again.'
-    return
+    $yn = if ([Environment]::UserInteractive) { Read-Host '   Ungoogled Chromium is open. Close it now? Save anything you are working on first. (Y/N)' } else { 'n' }
+    if ($yn -notmatch '^\s*y') { Warn 'Close every Ungoogled Chromium window (and its icon near the clock), then run this again.'; return }
+    Get-Chromium | ForEach-Object { try { [void]$_.CloseMainWindow() } catch { } }
+    for ($i = 0; $i -lt 20 -and (Get-Chromium); $i++) { Start-Sleep -Milliseconds 250 }
+    Get-Chromium | Stop-Process -Force -ErrorAction SilentlyContinue
+    for ($i = 0; $i -lt 20 -and (Get-Chromium); $i++) { Start-Sleep -Milliseconds 250 }
+    Start-Sleep -Seconds 1
+    if (Get-Chromium) { Warn 'Could not close Ungoogled Chromium. Close it yourself, then run this again.'; return }
+    Note 'Closed Ungoogled Chromium.'
 }
 
 # ---------------------------------------------------------------------------------------------
@@ -272,19 +279,12 @@ if (-not $hasChrome) {
     if ($yn -notmatch '^\s*y') {
         Note 'Skipped. You can do it later with the import command in the README.'
     } else {
-        $chromeOpen = { [bool](Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\Google\Chrome\Application\*' }) }
-        for ($i = 0; $i -lt 3 -and (& $chromeOpen); $i++) {
-            Read-Host '   Close Google Chrome (every window, and its icon near the clock), then press Enter' | Out-Null
-        }
-        if (& $chromeOpen) {
-            Warn 'Chrome is still open - import skipped. Run the import command from the README later.'
-        } else {
-            try {
-                $importUrl = 'https://raw.githubusercontent.com/uniqueabhishek/ungoogled-chromium-adfree-private-lightweight-setup/main/import-chrome.ps1'
-                Invoke-Expression (Invoke-RestMethod $importUrl -UseBasicParsing)
-            } catch {
-                Warn "The import could not run ($($_.Exception.Message)). Run the import command from the README later."
-            }
+        # The import asks to close Chrome if it is open.
+        try {
+            $importUrl = 'https://raw.githubusercontent.com/uniqueabhishek/ungoogled-chromium-adfree-private-lightweight-setup/main/import-chrome.ps1'
+            Invoke-Expression (Invoke-RestMethod $importUrl -UseBasicParsing)
+        } catch {
+            Warn "The import could not run ($($_.Exception.Message)). Run the import command from the README later."
         }
     }
 }

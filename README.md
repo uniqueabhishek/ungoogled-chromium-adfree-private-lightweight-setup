@@ -88,6 +88,7 @@ The script opens the browser with two tabs. Browsers do not allow these three st
 ## Good to know
 
 - **"Managed by your organization"** appears in the browser menu. That is because of the settings this script applies (search suggestions, HTTPS-first, uBlock settings). Nobody else controls your browser. See them at `chrome://policy`.
+- **uBlock says "The extension failed to load properly"?** Click **Remove** on its details page, then add it again from its [Chrome Web Store page](https://chromewebstore.google.com/detail/ddkjiahejlhfcafbddmgiahcphecmpfh) with **Add to Chromium**. Its settings come back by themselves.
 - **A site breaks?** Click the uBlock icon and lower the slider to **Basic** for that site. If a site does not load at all, turn off **Use secure DNS** at `chrome://settings/security` to check whether AdGuard DNS is the cause.
 - **Netflix, Prime Video and other DRM video do not play.** They need Google's Widevine component, which Ungoogled Chromium leaves out. Use another browser for those.
 - **No Google sign-in or sync in the browser.** Signing in to Gmail, YouTube or Drive *websites* works normally. For passwords, use a password manager such as Bitwarden.
@@ -99,7 +100,7 @@ The script opens the browser with two tabs. Browsers do not allow these three st
 
 ## Moving from Google Chrome?
 
-**The install command asks you** when it finds Google Chrome on the PC: answer **Y** and it brings your Chrome profiles over in the same run. To do it later instead, close **both** browsers and paste this into PowerShell:
+**The install command asks you** when it finds Google Chrome on the PC: answer **Y** and it brings your Chrome profiles over in the same run. To do it later instead, paste this into PowerShell (it offers to close Chrome and Ungoogled Chromium for you):
 
 ```powershell
 irm https://raw.githubusercontent.com/uniqueabhishek/ungoogled-chromium-adfree-private-lightweight-setup/main/import-chrome.ps1 | iex
