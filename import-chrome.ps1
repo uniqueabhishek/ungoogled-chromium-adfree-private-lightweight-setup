@@ -7,8 +7,10 @@
 #
 # For every Chrome profile it brings across: bookmarks, history, typed-address suggestions,
 # open tabs, new tab shortcuts and the profile name. Each profile gets Google search.
-# It does not bring: passwords (Chrome locks them - see the README), website logins (sign in
-# once per site), or extensions (install them again from the Chrome Web Store).
+# Saved passwords are optional and guided: it opens Chrome's Export page and Ungoogled Chromium's
+# Import page, finds the exported file, and deletes it afterwards.
+# It does not bring: website logins (Chrome locks them; sign in once per site) or extensions
+# (install them again from the Chrome Web Store).
 #
 # Chrome itself is never changed. Anything it would overwrite in Ungoogled Chromium is moved to
 # "User Data\Backup before import <date>" first, never deleted. Works in Windows PowerShell 5.1 and 7.
@@ -199,6 +201,62 @@ Set-Prop $ls.profile 'last_used' 'Default'
 Set-Prop $ls.profile 'show_picker_on_startup' ($order.Count -gt 1)
 Write-Json $lsPath $ls
 Note "$($order.Count) profile(s) in the picker."
+
+# ---------------------------------------------------------------------------------------------
+Step '5. Saved passwords (optional, guided)'
+# Chrome locks its password file to itself, so passwords go through Chrome's own Export button and
+# Ungoogled Chromium's own Import button. This step opens both pages, finds the exported file, and
+# deletes it afterwards (it holds every password in plain text).
+$chromeExe = @("$env:ProgramFiles\Google\Chrome\Application\chrome.exe", "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+               "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe") | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+$canAsk = [Environment]::UserInteractive -and -not $env:UCS_EXE
+if (-not $chromeExe -or -not $canAsk) {
+    Note 'Skipped. To move passwords by hand, see "Saved passwords" in the README.'
+} else {
+    $answer = Read-Host '   Import saved passwords too? (Y/N)'
+    if ($answer -notmatch '^\s*y') {
+        Note 'Skipped. You can run this command again later to do it.'
+    } else {
+        $downloads = $null
+        try { $downloads = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders').'{374DE290-123F-4565-9164-39C4925E467B}' } catch { }
+        $watch = @($downloads, "$env:USERPROFILE\Downloads", [Environment]::GetFolderPath('MyDocuments'),
+                   [Environment]::GetFolderPath('Desktop')) | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -Unique
+        foreach ($p in $plan) {
+            Write-Host ''
+            $yn = Read-Host "   Passwords for '$($p.Name)'? (Y/N)"
+            if ($yn -notmatch '^\s*y') { continue }
+            $since = (Get-Date).AddSeconds(-5)
+            Start-Process $chromeExe -ArgumentList "--profile-directory=`"$($p.Folder)`"", 'chrome://password-manager/settings'
+            Write-Host '   In GOOGLE CHROME: click "Export passwords", enter your Windows PIN if asked, and click Save.' -ForegroundColor Green
+            Write-Host '   (No passwords listed there? Open passwords.google.com > gear icon > Export passwords instead.)'
+            Write-Host '   Waiting for the file... (press Ctrl+C to stop)'
+            $csv = $null
+            for ($i = 0; $i -lt 600 -and -not $csv; $i++) {
+                Start-Sleep -Seconds 1
+                $csv = Get-ChildItem -LiteralPath $watch -Filter '*Password*.csv' -File -ErrorAction SilentlyContinue |
+                       Where-Object { $_.LastWriteTime -gt $since -and $_.Length -gt 0 } |
+                       Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            }
+            if (-not $csv) { Warn 'No exported file appeared within 10 minutes - skipped.'; continue }
+            Start-Sleep -Seconds 1
+            Note "Found it: $($csv.Name)"
+            try { Set-Clipboard -Value $csv.FullName } catch { }
+            Start-Process $exe -ArgumentList "--profile-directory=`"$($p.Folder)`"", 'chrome://password-manager/settings'
+            Write-Host '   In UNGOOGLED CHROMIUM: click "Import passwords" > "Select file", press Ctrl+V in the' -ForegroundColor Green
+            Write-Host '   "File name" box (the path is copied for you), then Open.'
+            Read-Host '   Press Enter here once it says the passwords were imported' | Out-Null
+            # Overwrite, then delete (not to the Recycle Bin) - the file holds every password in plain text.
+            try {
+                $len = (Get-Item -LiteralPath $csv.FullName).Length
+                [IO.File]::WriteAllBytes($csv.FullName, (New-Object byte[] $len))
+                Remove-Item -LiteralPath $csv.FullName -Force
+                Note 'The exported password file was deleted.'
+            } catch { Warn "Could not delete $($csv.FullName) - delete it yourself and empty the Recycle Bin." }
+            try { Set-Clipboard -Value ' ' } catch { }
+        }
+        Note 'Tip: also keep your passwords in a password manager such as Bitwarden - this browser has no sync.'
+    }
+}
 
 Write-Host ''
 Write-Host "Done - $(@($plan).Count) Chrome profile(s) imported." -ForegroundColor Green

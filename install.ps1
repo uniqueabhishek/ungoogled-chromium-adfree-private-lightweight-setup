@@ -13,7 +13,8 @@
 #   5. Sets browser policies: search suggestions, HTTPS first, page preloading, and the
 #      uBlock Origin Lite settings ("Complete" mode + extra filter lists)
 #   6. Downloads the Chromium Web Store helper extension
-#   7. Opens the browser on the uBlock Origin Lite install page and the extensions page
+#   7. If Google Chrome is on the PC, asks whether to bring its profiles over (import-chrome.ps1)
+#   8. Opens the browser on the uBlock Origin Lite install page and the extensions page
 #
 # Everything is for the current Windows user only. Every browser file it changes is backed up
 # first as "<file>.before-setup-<date>". Undo it all with uninstall.ps1 from the same repo.
@@ -127,7 +128,7 @@ $prefsPlaced = $true
 try { Copy-Item "$appDir\initial_preferences" "$exeDir\initial_preferences" -Force }
 catch { $prefsPlaced = $false }
 $existing = @(Get-ChildItem -LiteralPath $userData -Directory -ErrorAction SilentlyContinue |
-              Where-Object { Test-Path -LiteralPath "$($_.FullName)\Preferences" })
+              Where-Object { $_.Name -match '^(Default|Profile \d+)$' -and (Test-Path -LiteralPath "$($_.FullName)\Preferences") })
 if (-not $prefsPlaced) {
     Warn "The browser is installed for all users in $exeDir, which needs admin rights to change."
     Warn 'Run this command once more from PowerShell opened with "Run as administrator" to set Google search.'
@@ -257,7 +258,39 @@ try {
 }
 
 # ---------------------------------------------------------------------------------------------
-Step '7. Opening the browser'
+Step '7. Import from Google Chrome (optional)'
+$chromeData = "$env:LOCALAPPDATA\Google\Chrome\User Data"
+$hasChrome  = @(Get-ChildItem -LiteralPath $chromeData -Directory -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match '^(Default|Profile \d+)$' -and (Test-Path -LiteralPath "$($_.FullName)\Preferences") }).Count -gt 0
+if (-not $hasChrome) {
+    Note 'No Google Chrome profiles on this PC - skipped.'
+} elseif (-not [Environment]::UserInteractive) {
+    Note 'Skipped. Run the import command from the README to bring Chrome profiles over.'
+} else {
+    Write-Host '   Google Chrome is on this PC. Bring over its bookmarks, history, open tabs, shortcuts'
+    $yn = Read-Host '   and (if you want) saved passwords now? (Y/N)'
+    if ($yn -notmatch '^\s*y') {
+        Note 'Skipped. You can do it later with the import command in the README.'
+    } else {
+        $chromeOpen = { [bool](Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\Google\Chrome\Application\*' }) }
+        for ($i = 0; $i -lt 3 -and (& $chromeOpen); $i++) {
+            Read-Host '   Close Google Chrome (every window, and its icon near the clock), then press Enter' | Out-Null
+        }
+        if (& $chromeOpen) {
+            Warn 'Chrome is still open - import skipped. Run the import command from the README later.'
+        } else {
+            try {
+                $importUrl = 'https://raw.githubusercontent.com/uniqueabhishek/ungoogled-chromium-adfree-private-lightweight-setup/main/import-chrome.ps1'
+                Invoke-Expression (Invoke-RestMethod $importUrl -UseBasicParsing)
+            } catch {
+                Warn "The import could not run ($($_.Exception.Message)). Run the import command from the README later."
+            }
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------------------------
+Step '8. Opening the browser'
 $major  = (Get-Item $exe).VersionInfo.ProductMajorPart
 $uboUrl = "https://clients2.google.com/service/update2/crx?response=redirect&prodversion=$major.0&acceptformat=crx2,crx3&x=id%3D$uboLite%26uc"
 Start-Process $exe -ArgumentList $uboUrl, 'chrome://extensions'

@@ -338,6 +338,7 @@ Skip this section on a PC that never had Chrome.
 - **Names each profile after its Google address** (for example `abc@gmail.com`), or its Chrome name, and keeps the avatar.
 - **Opens a profile picker** at start-up when there is more than one profile.
 - **Never deletes anything.** Chrome is not touched. Anything it replaces in Ungoogled Chromium is moved to `User Data\Backup before import <date>`.
+- **Offers to move saved passwords**, profile by profile. It opens Chrome's password page (click **Export passwords**), waits for the exported file, opens Ungoogled Chromium's password page (click **Import passwords** and paste the file path it copied for you), then overwrites and deletes the file. Chrome locks its password file, so this export/import is the only safe way.
 - **Extensions are per profile.** In each profile that was new, add uBlock Origin Lite once with the link the script prints at the end. Load Chromium Web Store there too if you want "Add to Chromium" in that profile ([section 5](#5-installing-extensions-from-the-chrome-web-store)).
 
 **It takes a few minutes** for large profiles. A log is saved to `%TEMP%\ungoogled-chromium-import-log.txt`.
