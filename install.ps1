@@ -24,9 +24,13 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference    = 'SilentlyContinue'   # Invoke-WebRequest is very slow with the progress bar in 5.1
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-$appDir   = "$env:LOCALAPPDATA\Chromium"
-$exe      = "$appDir\Application\chrome.exe"
+$appDir   = "$env:LOCALAPPDATA\Chromium"          # settings, profiles, updater (always per user)
 $userData = "$appDir\User Data"
+# The browser program itself is per user normally, or in Program Files if it was installed for all users.
+$exeCandidates = @("$appDir\Application\chrome.exe", "$env:ProgramFiles\Chromium\Application\chrome.exe",
+                   "${env:ProgramFiles(x86)}\Chromium\Application\chrome.exe")
+function Find-Exe { $exeCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1 }
+$exe      = Find-Exe
 $cwsDir   = "$appDir\Unpacked Extensions\Chromium Web Store"
 $stamp    = Get-Date -Format 'yyyyMMdd-HHmm'
 $adguard  = 'https://dns.adguard-dns.com/dns-query'
@@ -43,6 +47,10 @@ function Set-Prop($obj, $name, $value) {
 }
 function Get-Chromium { Get-Process chrome -ErrorAction SilentlyContinue | Where-Object { $_.Path -like '*\Chromium\Application\*' } }
 
+$logFile = Join-Path $env:TEMP 'ungoogled-chromium-setup-log.txt'
+try { Start-Transcript -Path $logFile -Force | Out-Null } catch { }
+try {   # the whole setup; any unexpected error is reported at the bottom with the log file
+
 Write-Host ''
 Write-Host 'Ungoogled Chromium - ad-free, private setup' -ForegroundColor Green
 Write-Host '-------------------------------------------'
@@ -55,7 +63,7 @@ if (Get-Chromium) {
 
 # ---------------------------------------------------------------------------------------------
 Step '1. Install Ungoogled Chromium'
-if (Test-Path $exe) {
+if ($exe) {
     Note "Already installed: version $((Get-Item $exe).VersionInfo.ProductVersion)"
 } else {
     if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
@@ -63,11 +71,31 @@ if (Test-Path $exe) {
         Warn 'Microsoft Store, then run this again:  ms-windows-store://pdp/?productid=9NBLGGH4NNS1'
         return
     }
+    $hadUserData = Test-Path -LiteralPath $userData
     Note 'Downloading and installing (about 1-2 minutes)...'
-    winget install --id eloston.ungoogled-chromium -e --silent --accept-source-agreements --accept-package-agreements
-    if (-not (Test-Path $exe)) { Warn "The install finished but $exe was not found. Nothing else was changed."; return }
+    # --scope user: install for this Windows user only (no admin), in %LOCALAPPDATA%\Chromium.
+    winget install --id eloston.ungoogled-chromium -e --scope user --silent --accept-source-agreements --accept-package-agreements
+    $exe = Find-Exe
+    if (-not $exe) {
+        Note 'Trying again without the per-user option...'
+        winget install --id eloston.ungoogled-chromium -e --silent --accept-source-agreements --accept-package-agreements
+        $exe = Find-Exe
+    }
+    if (-not $exe) { Warn 'The install did not finish (chrome.exe not found). Nothing else was changed.'; Warn "Log: $logFile"; return }
     Note "Installed version $((Get-Item $exe).VersionInfo.ProductVersion)"
+
+    # The installer can open the browser by itself. Close it before changing settings, and if that
+    # created a brand-new empty profile, remove it so the first real start picks up the settings below.
+    Start-Sleep -Seconds 3
+    if (Get-Chromium) {
+        Get-Chromium | Stop-Process -Force -ErrorAction SilentlyContinue
+        $t = 0; while ((Get-Chromium) -and $t -lt 30) { Start-Sleep -Milliseconds 500; $t++ }
+        Start-Sleep -Seconds 1
+        if (-not $hadUserData) { Remove-Item -LiteralPath $userData -Recurse -Force -ErrorAction SilentlyContinue }
+        Note 'Closed the browser window the installer opened; it reopens at the end.'
+    }
 }
+$exeDir = Split-Path $exe
 
 # ---------------------------------------------------------------------------------------------
 Step '2. Google search with suggestions (new profiles)'
@@ -93,11 +121,17 @@ $initialPrefs = @'
   "distribution": { "skip_first_run_ui": true, "suppress_first_run_default_browser_prompt": true }
 }
 '@
+New-Item -ItemType Directory -Force $appDir | Out-Null
 [IO.File]::WriteAllText("$appDir\initial_preferences", $initialPrefs)
-Copy-Item "$appDir\initial_preferences" "$appDir\Application\initial_preferences" -Force
+$prefsPlaced = $true
+try { Copy-Item "$appDir\initial_preferences" "$exeDir\initial_preferences" -Force }
+catch { $prefsPlaced = $false }
 $existing = @(Get-ChildItem -LiteralPath $userData -Directory -ErrorAction SilentlyContinue |
               Where-Object { Test-Path -LiteralPath "$($_.FullName)\Preferences" })
-if ($existing) {
+if (-not $prefsPlaced) {
+    Warn "The browser is installed for all users in $exeDir, which needs admin rights to change."
+    Warn 'Run this command once more from PowerShell opened with "Run as administrator" to set Google search.'
+} elseif ($existing) {
     Note 'Done for new profiles. Your existing profiles keep their current search engine;'
     Note 'see "Already using Ungoogled Chromium?" in the README to switch them.'
 } else {
@@ -116,11 +150,12 @@ winget upgrade --id eloston.ungoogled-chromium -e --silent --accept-source-agree
     Where-Object { $_ -match '\w{3,}' } | Add-Content $log
 # Put the Google search default for new profiles back if the update removed it.
 $keep = Join-Path $PSScriptRoot 'initial_preferences'
-$live = Join-Path $PSScriptRoot 'Application\initial_preferences'
-if ((Test-Path $keep) -and -not (Test-Path $live)) { Copy-Item $keep $live }
+$live = Join-Path '__EXEDIR__' 'initial_preferences'
+if ((Test-Path $keep) -and -not (Test-Path $live)) { Copy-Item $keep $live -ErrorAction SilentlyContinue }
 # Keep the log short.
 $lines = @(Get-Content $log); if ($lines.Count -gt 400) { $lines[-400..-1] | Set-Content $log }
 '@
+$updaterBody = $updaterBody.Replace('__EXEDIR__', $exeDir.Replace("'", "''"))
 [IO.File]::WriteAllText($updater, $updaterBody)
 try {
     $ps       = "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -240,4 +275,11 @@ Write-Host 'Recommended: chrome://extensions > uBlock Origin Lite > Details > tu
 Write-Host '(better blocking on YouTube) and "Allow in Incognito".'
 Write-Host 'Undo everything later with uninstall.ps1 - see the README.'
 Write-Host ''
+} catch {
+    Write-Host ''
+    Warn "Setup stopped: $($_.Exception.Message)"
+    Warn "Nothing is broken - run the same command again. If it stops again, send this file: $logFile"
+} finally {
+    try { Stop-Transcript | Out-Null } catch { }
+}
 }
