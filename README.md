@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="Ungoogled Chromium: ad-free, private, lightweight. One command for Windows 10 and 11." width="100%">
+  <img src="assets/banner.svg" alt="Ungoogled Chromium: ad-free, far more private than Chrome, lighter than Chrome. One command for Windows 10 and 11." width="100%">
 </p>
 
 <p align="center">
@@ -9,10 +9,10 @@
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/license-MIT-64748b?style=for-the-badge"></a>
 </p>
 
-<h3 align="center">Chrome's speed. None of the ads. Nothing sent to Google.</h3>
+<h3 align="center">Lighter than Chrome. Far more private than Chrome. No ads.</h3>
 
 <p align="center">
-  <b>No YouTube ads</b> · <b>63% less CPU at start-up</b> · <b>30% less RAM</b> · <b>0 background calls to Google</b>
+  <b>No YouTube ads</b> · <b>63% less CPU at start-up</b> · <b>30% less RAM</b> · <b>0 background calls to Google</b> · <b>your choice of search engine</b>
 </p>
 
 ---
@@ -54,9 +54,9 @@ Measured on the same laptop, fresh profiles, 4 rounds ([full report](benchmark/R
 | 🚫 | **No ads, YouTube included** | uBlock Origin Lite in its strongest "Complete" mode, plus extra lists for ads, cookie banners and pop-ups |
 | 🛡️ | **Trackers blocked before they load** | AdGuard's free encrypted DNS, inside the browser only |
 | 🔒 | **Nothing sent to Google in the background** | Ungoogled Chromium itself: no sign-in, sync, Safe Browsing calls or "phone home" traffic |
-| 🔎 | **Google search with live suggestions** | Ungoogled Chromium ships with no search engine; this adds Google as the default |
+| 🔎 | **Your choice of search engine** | Ungoogled Chromium ships with none. The install asks: **Google** (best results), **DuckDuckGo** or **Brave Search** (more private). All with suggestions as you type |
 | 🧩 | **Chrome Web Store works** | The Chromium Web Store helper brings back "Add to Chromium" and extension updates |
-| 📦 | **Your Chrome profiles come along** | Bookmarks, history, open tabs, shortcuts and profile names, each profile with Google search; saved passwords through a guided export and import |
+| 📦 | **Your Chrome profiles come along** | Bookmarks, history, open tabs, shortcuts and profile names, each profile with your search engine; saved passwords through a guided export and import |
 | 🔄 | **Updates itself** | A scheduled task updates the browser every Wednesday and at every sign-in |
 | 🔐 | **HTTPS first, faster loads** | Typed addresses try `https://` first; likely pages are preloaded |
 
@@ -92,6 +92,7 @@ The script opens the browser with two tabs. Browsers do not allow these three st
 - **A site breaks?** Click the uBlock icon and lower the slider to **Basic** for that site. If a site does not load at all, turn off **Use secure DNS** at `chrome://settings/security` to check whether AdGuard DNS is the cause.
 - **Netflix, Prime Video and other DRM video do not play.** They need Google's Widevine component, which Ungoogled Chromium leaves out. Use another browser for those.
 - **No Google sign-in or sync in the browser.** Signing in to Gmail, YouTube or Drive *websites* works normally. For passwords, use a password manager such as Bitwarden.
+- **What still leaves your PC:** your searches (and the letters you type, for suggestions) go to the search engine you picked; AdGuard DNS sees which site names you visit, not the pages; and websites can still recognise a browser by its traits ("fingerprinting") - Brave, LibreWolf and Mullvad Browser go further on that.
 - **Two honest trade-offs versus Chrome:** there is no Google Safe Browsing (the red "Dangerous site" warning), though uBlock's malware lists and AdGuard DNS block many known bad sites; and security updates arrive a few days to a couple of weeks after Chrome's. Be careful with unknown links and attachments.
 - **Classic uBlock Origin no longer works** in any Chromium-based browser (Manifest V2 was removed). uBlock Origin Lite plus AdGuard DNS gets close to the same result.
 - **Windows PowerShell says scripts are disabled?** The one-line command above is not affected by that setting. If you downloaded the files instead, run `powershell -ExecutionPolicy Bypass -File .\install.ps1`.
@@ -106,7 +107,7 @@ The script opens the browser with two tabs. Browsers do not allow these three st
 irm https://raw.githubusercontent.com/uniqueabhishek/ungoogled-chromium-adfree-private-lightweight-setup/main/import-chrome.ps1 | iex
 ```
 
-- **Brings across every Chrome profile:** bookmarks, history, address-bar suggestions, open tabs, new tab shortcuts and the profile name. Each profile gets Google search.
+- **Brings across every Chrome profile:** bookmarks, history, address-bar suggestions, open tabs, new tab shortcuts and the profile name. Each profile gets the search engine you picked.
 - **Saved passwords too, if you want:** it asks, then opens Chrome's **Export passwords** page and Ungoogled Chromium's **Import passwords** page for you, and deletes the exported file afterwards. Also consider a password manager such as Bitwarden, since this browser has no sync ([guide](docs/GUIDE.md#9-passwords-with-bitwarden)).
 - **Does not bring:** website logins (Chrome locks them; sign in once per site) or extensions (add them again from the Chrome Web Store).
 - **Safe:** Chrome is never changed, and anything replaced in Ungoogled Chromium is kept in `User Data\Backup before import <date>`.

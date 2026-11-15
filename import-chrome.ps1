@@ -6,7 +6,7 @@
 #   irm https://raw.githubusercontent.com/uniqueabhishek/ungoogled-chromium-adfree-private-lightweight-setup/main/import-chrome.ps1 | iex
 #
 # For every Chrome profile it brings across: bookmarks, history, typed-address suggestions,
-# open tabs, new tab shortcuts and the profile name. Each profile gets Google search.
+# open tabs, new tab shortcuts and the profile name. Each profile gets the search engine chosen during the install.
 # Saved passwords are optional and guided: it opens Chrome's Export page and Ungoogled Chromium's
 # Import page, finds the exported file, and deletes it afterwards.
 # It does not bring: website logins (Chrome locks them; sign in once per site) or extensions
@@ -88,8 +88,8 @@ $plan = foreach ($f in $folders) {
 foreach ($p in $plan) { Note ("{0,-11} {1}" -f $p.Folder, $p.Name) }
 
 # ---------------------------------------------------------------------------------------------
-Step '2. Preparing a Chromium profile for each (with Google search)'
-# Google search can only be set on a brand-new profile, when the browser starts for the first time.
+Step '2. Preparing a Chromium profile for each (with your search engine)'
+# The search engine can only be set on a brand-new profile, when the browser starts for the first time.
 # So each missing profile is made that way: start the browser once, hidden, as a first run, then
 # move the new profile into place. Profiles that already exist keep their own settings.
 New-Item -ItemType Directory -Force $userData | Out-Null
@@ -124,8 +124,8 @@ try {
         Start-Sleep -Seconds 1
         if (-not (Test-Path -LiteralPath "$userData\Default")) { throw "the browser did not create a profile for $($p.Folder)" }
         if ($p.Folder -ne 'Default') { Rename-Item -LiteralPath "$userData\Default" $p.Folder }
-        if ($ok) { Note "$($p.Folder): new profile with Google search." }
-        else     { Warn "$($p.Folder): new profile made, but Google search could not be set on it." }
+        if ($ok) { Note "$($p.Folder): new profile with your search engine." }
+        else     { Warn "$($p.Folder): new profile made, but the search engine could not be set on it." }
     }
 } finally {
     # Put the original Default profile back, and the first-run marker.

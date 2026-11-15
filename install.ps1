@@ -7,7 +7,7 @@
 #
 # What it does, in order:
 #   1. Installs Ungoogled Chromium with winget (skipped if it is already installed)
-#   2. Makes Google, with live suggestions, the search engine for new profiles
+#   2. Asks for the search engine (Google, DuckDuckGo or Brave Search) and sets it for new profiles
 #   3. Adds a scheduled task that keeps the browser updated (weekly + at every sign-in)
 #   4. Turns on AdGuard ad-blocking DNS and the flag that allows installing extensions
 #   5. Sets browser policies: search suggestions, HTTPS first, page preloading, and the
@@ -106,30 +106,43 @@ if ($exe) {
 $exeDir = Split-Path $exe
 
 # ---------------------------------------------------------------------------------------------
-Step '2. Google search with suggestions (new profiles)'
-# Ungoogled Chromium ships with no Google entry, and the search-engine policies are blocked on home
-# PCs. "initial_preferences" next to chrome.exe is read whenever a profile is created, and sets the
+Step '2. Search engine (new profiles)'
+# Ungoogled Chromium starts with no search engine, and the search-engine policies are blocked on home
+# PCs. "initial_preferences" next to chrome.exe is read when a profile is created, and sets the
 # default engine there. A copy is kept in the Chromium folder so the updater can put it back.
-$initialPrefs = @'
-{
-  "default_search_provider_data": {
-    "template_url_data": {
-      "short_name": "Google",
-      "keyword": "google.com",
-      "url": "https://www.google.com/search?q={searchTerms}&ie={inputEncoding}",
-      "suggestions_url": "https://www.google.com/complete/search?client=chrome&q={searchTerms}",
-      "favicon_url": "https://www.google.com/favicon.ico",
-      "input_encodings": ["UTF-8"],
-      "safe_for_autoreplace": false,
-      "prepopulate_id": 0,
-      "synced_guid": "7f0c5a2e-3b1d-4e6a-9c8f-0a1b2c3d4e01"
-    }
-  },
-  "search": { "suggest_enabled": true },
-  "distribution": { "skip_first_run_ui": true, "suppress_first_run_default_browser_prompt": true }
+$engines = @(
+    @{ Label = 'Google - best results'; Name = 'Google'; Keyword = 'google.com'
+       Url = 'https://www.google.com/search?q={searchTerms}&ie={inputEncoding}'
+       Suggest = 'https://www.google.com/complete/search?client=chrome&q={searchTerms}'
+       Icon = 'https://www.google.com/favicon.ico'; Prepop = 0 }
+    @{ Label = 'DuckDuckGo - more private, no tracking'; Name = 'DuckDuckGo'; Keyword = 'duckduckgo.com'
+       Url = 'https://duckduckgo.com/?q={searchTerms}'
+       Suggest = 'https://duckduckgo.com/ac/?q={searchTerms}&type=list'
+       Icon = 'https://duckduckgo.com/favicon.ico'; Prepop = 92 }    # 92/109 = the browser's own built-in entries
+    @{ Label = 'Brave Search - more private, its own index'; Name = 'Brave'; Keyword = 'search.brave.com'
+       Url = 'https://search.brave.com/search?q={searchTerms}'
+       Suggest = 'https://search.brave.com/api/suggest?q={searchTerms}&rich=true&source=desktop'
+       Icon = 'https://search.brave.com/favicon.ico'; Prepop = 109 }
+)
+$pick = 0
+if ([Environment]::UserInteractive) {
+    for ($i = 0; $i -lt $engines.Count; $i++) { Note "$($i + 1). $($engines[$i].Label)" }
+    $answer = Read-Host '   Which search engine? Type 1, 2 or 3 (just Enter = 1)'
+    if ($answer -match '^\s*([123])\s*$') { $pick = [int]$Matches[1] - 1 }
 }
-'@
-New-Item -ItemType Directory -Force $appDir | Out-Null
+$e = $engines[$pick]
+$initialPrefs = ([ordered]@{
+    default_search_provider_data = [ordered]@{
+        template_url_data = [ordered]@{
+            short_name = $e.Name; keyword = $e.Keyword; url = $e.Url; suggestions_url = $e.Suggest
+            favicon_url = $e.Icon; input_encodings = @('UTF-8'); safe_for_autoreplace = $false
+            prepopulate_id = $e.Prepop; synced_guid = '7f0c5a2e-3b1d-4e6a-9c8f-0a1b2c3d4e01'
+        }
+    }
+    search       = [ordered]@{ suggest_enabled = $true }
+    distribution = [ordered]@{ skip_first_run_ui = $true; suppress_first_run_default_browser_prompt = $true }
+} | ConvertTo-Json -Depth 10)
+Note "Search engine: $($e.Name), with suggestions as you type."New-Item -ItemType Directory -Force $appDir | Out-Null
 [IO.File]::WriteAllText("$appDir\initial_preferences", $initialPrefs)
 $prefsPlaced = $true
 try { Copy-Item "$appDir\initial_preferences" "$exeDir\initial_preferences" -Force }
@@ -138,12 +151,12 @@ $existing = @(Get-ChildItem -LiteralPath $userData -Directory -ErrorAction Silen
               Where-Object { $_.Name -match '^(Default|Profile \d+)$' -and (Test-Path -LiteralPath "$($_.FullName)\Preferences") })
 if (-not $prefsPlaced) {
     Warn "The browser is installed for all users in $exeDir, which needs admin rights to change."
-    Warn 'Run this command once more from PowerShell opened with "Run as administrator" to set Google search.'
+    Warn 'Run this command once more from PowerShell opened with "Run as administrator" to set the search engine.'
 } elseif ($existing) {
     Note 'Done for new profiles. Your existing profiles keep their current search engine;'
     Note 'see "Already using Ungoogled Chromium?" in the README to switch them.'
 } else {
-    Note 'Done. The first profile will start with Google.'
+    Note "Done. The first profile will start with $($e.Name)."
 }
 
 # ---------------------------------------------------------------------------------------------

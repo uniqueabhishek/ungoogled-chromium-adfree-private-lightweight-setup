@@ -37,7 +37,7 @@ The script does everything that can be automated. The rest is about 2 minutes of
    ```
 3. **The script does these steps:**
    - Installs Ungoogled Chromium with winget, if it is missing.
-   - Makes Google, with live suggestions, the search engine for new profiles.
+   - Asks which search engine you want (Google, DuckDuckGo or Brave Search) and sets it, with suggestions, for new profiles.
    - Adds a scheduled task that keeps the browser updated.
    - Turns on AdGuard ad-blocking DNS.
    - Turns on the flag that lets extensions install from the Chrome Web Store.
@@ -96,7 +96,7 @@ Ungoogled Chromium has **no built-in updater**. Chrome's updater is a Google ser
   ```powershell
   winget upgrade --id eloston.ungoogled-chromium -e --silent --accept-source-agreements --accept-package-agreements --disable-interactivity
   ```
-  It writes what happened to `winget-upgrade.log` in the same folder, and puts the Google search default for new profiles (`initial_preferences`) back if an update removed it.
+  It writes what happened to `winget-upgrade.log` in the same folder, and puts the search-engine default for new profiles (`initial_preferences`) back if an update removed it.
 - **A scheduled task called "Update Ungoogled Chromium"** runs that script:
   - every **Wednesday at 1 pm**
   - at every **Windows sign-in**
@@ -244,7 +244,7 @@ After this, any Chrome Web Store page shows **Add to Chromium**.
 
 Ungoogled Chromium starts with the search engine set to **"No Search"**. The address bar then only accepts web addresses, with no searching and no suggestions. **There is no built-in Google entry**: slot 1 of the built-in list is "No Search". A Google entry added by hand in Settings never gets live suggestions.
 
-**New profiles (what `install.ps1` does):** it places an `initial_preferences` file next to `chrome.exe`. The browser reads it whenever a profile is created, and that profile starts with Google, with live suggestions, as its default. A copy is kept at `%LOCALAPPDATA%\Chromium\initial_preferences`; the update task puts it back if an update removes it.
+**New profiles (what `install.ps1` does):** it places an `initial_preferences` file next to `chrome.exe`. The browser reads it whenever a profile is created, and that profile starts with the engine picked during the install (Google, DuckDuckGo or Brave Search), with suggestions, as its default. Run the install again to change the choice for profiles made later; existing profiles can switch any time in `chrome://settings/search`. A copy is kept at `%LOCALAPPDATA%\Chromium\initial_preferences`; the update task puts it back if an update removes it.
 
 **Profiles that already existed** before the install keep their engine. For those, use the scripts below.
 
@@ -333,7 +333,7 @@ Skip this section on a PC that never had Chrome.
 **What it does:**
 
 - **Finds every Chrome profile folder** (`Default`, `Profile 1`, `Profile 2`, …). It reads the folders themselves, not only Chrome's own profile list, which can miss profiles.
-- **Makes a matching Ungoogled Chromium profile with Google search.** Google can only be set on a brand-new profile at the browser's first start, so for each missing profile the script starts the browser once, hidden, and moves the new profile into place. A profile that already exists (for example the one you set up with the install) keeps its settings and extensions, and Chrome's data is added to it.
+- **Makes a matching Ungoogled Chromium profile with your search engine.** The engine can only be set on a brand-new profile at the browser's first start, so for each missing profile the script starts the browser once, hidden, and moves the new profile into place. A profile that already exists (for example the one you set up with the install) keeps its settings and extensions, and Chrome's data is added to it.
 - **Copies the data**, skipping caches, extension folders and the files Chrome locks to itself (passwords, cookies).
 - **Names each profile after its Google address** (for example `abc@gmail.com`), or its Chrome name, and keeps the avatar.
 - **Opens a profile picker** at start-up when there is more than one profile.
@@ -451,11 +451,11 @@ Open `chrome://extensions` in **Google Chrome** to see your list, then in Ungoog
 
 | File | What it is |
 |---|---|
-| `install.ps1` | One-shot setup: install, Google search for new profiles, updates, AdGuard DNS, extension flag, policies (suggestions, HTTPS first, preloading, uBlock Origin Lite settings), Chromium Web Store download |
+| `install.ps1` | One-shot setup: install, search engine choice for new profiles, updates, AdGuard DNS, extension flag, policies (suggestions, HTTPS first, preloading, uBlock Origin Lite settings), Chromium Web Store download |
 | `uninstall.ps1` | Undoes `install.ps1`; keeps profiles and the browser |
 | `docs/GUIDE.md` | This guide |
 | `extras/Set-Search-Engine.ps1` (+ `set_search_engine.py`, `make-google-default.mjs`) | Google with suggestions as the default, plus yt / gh / maps shortcuts, in every **existing** profile |
-| `import-chrome.ps1` | Copies every Chrome profile into Ungoogled Chromium, with Google search, named by Google address |
+| `import-chrome.ps1` | Copies every Chrome profile into Ungoogled Chromium, with your search engine, named by Google address |
 | `extras/Edit-Shortcuts.ps1` | Lists / adds / removes new tab page shortcuts per profile |
 | `benchmark/` | Chrome vs Ungoogled test: `REPORT.md` (results) and `bench.mjs` (re-run with `node bench.mjs` after `pnpm install`) |
 
